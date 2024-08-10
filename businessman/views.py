@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect
-from .models import Companies
+from .models import Companies, Documents, Metrics
 from django.contrib import messages
 from django.contrib.messages import constants
 
 # Create your views here.
 def register_company(request):
+    if not request.user.is_authenticated:
+        return redirect('/users/login')
     if request.method == "GET":
         return render(request, 'register_company.html', {'time_existence': Companies.time_existence_choices, 'areas': Companies.area_choices })
     elif request.method == "POST":
@@ -45,3 +47,73 @@ def register_company(request):
 
     messages.add_message(request, constants.SUCCESS, 'Empresa criada com sucesso')
     return redirect('/businessman/register_company')
+
+def list_companies(request):
+    if not request.user.is_authenticated:
+        return redirect('/users/login')
+    if request.method == "GET":
+        companies = Companies.objects.filter(user=request.user)
+        return render(request, 'list_companies.html', {'companies': companies})
+     
+def company(request, id):    
+    company = Companies.objects.get(id=id)
+
+    if company.user != request.user:
+        messages.add_message(request, constants.ERROR, "Essa empresa não é sua")
+        return redirect(f'/businessman/list_companies')
+    
+    if request.method == "GET":
+        documents = Documents.objects.filter(company=company)
+        return render(request, 'company.html', {'company': company,'documents': documents})
+    
+def add_doc(request, id):
+    company = Companies.objects.get(id=id)
+    title = request.POST.get('titulo')
+    file = request.FILES.get('arquivo')
+    extension = file.name.split('.')
+
+    if company.user != request.user:
+        messages.add_message(request, constants.ERROR, "Essa empresa não é sua")
+        return redirect(f'/businessman/list_companies')
+
+    if extension[1] != 'pdf':
+        messages.add_message(request, constants.ERROR, "Envie apenas PDF's")
+        return redirect(f'/businessman/company/{company.id}')
+    
+    if not file:
+        messages.add_message(request, constants.ERROR, "Envie um arquivo")
+        return redirect(f'/businessman/company/{company.id}')
+        
+    document = Documents(
+        company=company,
+        title=title,
+        file=file
+    )
+    document.save()
+    messages.add_message(request, constants.SUCCESS, "Arquivo cadastrado com sucesso")
+    return redirect(f'/businessman/company/{company.id}')
+
+def delete_doc(request, id):
+    document = Documents.objects.get(id=id)
+    if document.company.user != request.user:
+        messages.add_message(request, constants.ERROR, "Esse documento não é seu")
+        return redirect(f'/businessman/company/{document.company.id}')
+
+    document.delete()
+    messages.add_message(request, constants.SUCCESS, "Documento excluído com sucesso")
+    return redirect(f'/businessman/company/{document.company.id}')
+
+def add_metrics(request, id):
+    company = Companies.objects.get(id=id)
+    title = request.POST.get('titulo')
+    value = request.POST.get('valor')
+    
+    metric = Metrics(
+        company=company,
+        title=title,
+        value=value
+    )
+    metric.save()
+
+    messages.add_message(request, constants.SUCCESS, "Métrica cadastrada com sucesso")
+    return redirect(f'/businessman/company/{company.id}')
