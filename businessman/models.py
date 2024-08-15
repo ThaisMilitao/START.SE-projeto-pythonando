@@ -36,8 +36,9 @@ class Companies(models.Model):
     value = models.DecimalField(max_digits=9, decimal_places=2)
     pitch = models.FileField(upload_to='pitchs')
     logo = models.FileField(upload_to='logo')
+    
     def __str__(self):
-        return f'{self.user.username} | {self.nome}'
+        return f'{self.user.username} | {self.name}'
     
     @property
     def status(self):
@@ -47,7 +48,7 @@ class Companies(models.Model):
     
     @property
     def valuation(self):
-        return f'{(100 * self.value) / self.percentual_equity:.2f}'
+        return float(f'{(100 * self.value) / self.percentual_equity:.2f}')
     
 class Documents(models.Model):
     company = models.ForeignKey(Companies, on_delete=models.DO_NOTHING)

@@ -7,4 +7,5 @@ urlpatterns = [
     path('add_doc/<int:id>', views.add_doc, name="add_doc"),
     path('delete_doc/<int:id>', views.delete_doc, name="delete_doc"),
     path('add_metrics/<int:id>', views.add_metrics, name="add_metrics"),
+    path('manage_proposal/<int:id>', views.manage_proposal, name="manage_proposal")
 ]

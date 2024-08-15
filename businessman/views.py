@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect
 from .models import Companies, Documents, Metrics
+from investors.models import InvestmentProposal
 from django.contrib import messages
 from django.contrib.messages import constants
+
 
 # Create your views here.
 def register_company(request):
@@ -64,7 +66,21 @@ def company(request, id):
     
     if request.method == "GET":
         documents = Documents.objects.filter(company=company)
-        return render(request, 'company.html', {'company': company,'documents': documents})
+        investment_proposal = InvestmentProposal.objects.filter(company=company)
+        
+        percentage_sold = 0
+        for ip in investment_proposal:
+            if ip.status == 'PA':
+                percentage_sold += ip.percentual
+        
+        total_raised = sum(investment_proposal.filter(status='PA').values_list('value', flat=True))
+        current_valuation = (100 * float(total_raised)) / float(percentage_sold) if percentage_sold != 0 else 0
+        investment_proposal_sent = investment_proposal.filter(status='PE')
+        return render(request, 'company.html', {'company': company, 'documents': documents, 
+                                                'investment_proposal_sent': investment_proposal_sent,
+                                                'percentage_sold':int(percentage_sold),
+                                                'total_raised':total_raised,
+                                                'current_valuation':current_valuation})
     
 def add_doc(request, id):
     company = Companies.objects.get(id=id)
@@ -117,3 +133,19 @@ def add_metrics(request, id):
 
     messages.add_message(request, constants.SUCCESS, "Métrica cadastrada com sucesso")
     return redirect(f'/businessman/company/{company.id}')
+
+
+def manage_proposal(request, id):
+    action = request.GET.get('action')
+    ip = InvestmentProposal.objects.get(id=id)
+
+    if action == 'accept':
+        messages.add_message(request, constants.SUCCESS, 'Proposta aceita')
+        ip.status = 'PA'
+    elif action == 'deny':
+        messages.add_message(request, constants.SUCCESS, 'Proposta recusada')
+        ip.status = 'PR'
+
+
+    ip.save()
+    return redirect(f'/businessman/company/{ip.company.id}')
